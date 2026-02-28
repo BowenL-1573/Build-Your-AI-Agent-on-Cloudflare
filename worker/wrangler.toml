@@ -1,0 +1,29 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "cf-agent"
+main = "src/index.ts"
+compatibility_date = "2025-02-26"
+
+[durable_objects]
+bindings = [
+  { name = "AGENT_SESSION", class_name = "AgentSession" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["AgentSession"]
+
+[vars]
+SANDBOX_URL = "http://sandbox.agents.cloudc.top:9090"
+AI_GATEWAY_BASE = "https://gateway.ai.cloudflare.com/v1/846663c4c93fe5665f3b727025f534c9/cf-agent-gateway/compat"
+AI_MODEL = "workers-ai/@cf/zai-org/glm-4.7-flash"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "agent-user-db"
+database_id = "148e0c32-a3ca-4f3a-b87a-1d54821b1b81"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "sandbox"
+
+# CF_AIG_TOKEN 通过 wrangler secret 设置
