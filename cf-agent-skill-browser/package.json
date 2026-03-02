@@ -1,5 +1,5 @@
 {
-  "name": "cf-agent",
+  "name": "cf-agent-skill-browser",
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
@@ -10,7 +10,6 @@
     "wrangler": "^4.0.0"
   },
   "dependencies": {
-    "@cloudflare/sandbox": "^0.7.0",
-    "agents": "^0.6.0"
+    "@cloudflare/puppeteer": "^0.0.15"
   }
 }

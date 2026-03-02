@@ -192,20 +192,6 @@ const Login = () => {
             <p className="text-lg text-gray-400 max-w-md">
               登录您的账户，继续与AI代理协作，提升工作效率。
             </p>
-
-            <div className="mt-12 space-y-4">
-              {[
-                { label: '活跃代理', value: '12,000+' },
-                { label: '完成任务', value: '500万+' },
-                { label: '用户满意度', value: '98%' },
-              ].map((stat, i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <div className="w-2 h-2 rounded-full bg-purple-500" />
-                  <span className="text-gray-400">{stat.label}</span>
-                  <span className="text-white font-semibold">{stat.value}</span>
-                </div>
-              ))}
-            </div>
           </div>
 
           {/* Right Side - Form */}
@@ -247,7 +233,7 @@ const Login = () => {
                     <Input
                       id="password"
                       type={showPassword ? 'text' : 'password'}
-                      placeholder="••••••••"
+                      placeholder=""
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 h-12 rounded-xl pr-12 focus:border-purple-500 focus:ring-purple-500/20"
@@ -302,30 +288,7 @@ const Login = () => {
                     联系销售团队
                   </a>
                 </p>
-              </div>
-
-              {/* Divider */}
-              <div className="relative my-8">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-white/10" />
                 </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-black text-gray-500">或通过以下方式登录</span>
-                </div>
-              </div>
-
-              {/* Social Login */}
-              <div className="grid grid-cols-3 gap-4">
-                {['Google', 'GitHub', 'Microsoft'].map((provider) => (
-                  <button
-                    key={provider}
-                    type="button"
-                    className="flex items-center justify-center gap-2 p-3 rounded-xl border border-white/10 hover:bg-white/5 transition-colors"
-                  >
-                    <span className="text-sm text-gray-300">{provider}</span>
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
         </div>

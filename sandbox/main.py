@@ -14,6 +14,7 @@ R2_ACCESS_KEY = os.environ.get("R2_ACCESS_KEY", "")
 R2_SECRET_KEY = os.environ.get("R2_SECRET_KEY", "")
 R2_BUCKET = os.environ.get("R2_BUCKET", "")
 WORKER_URL = os.environ.get("WORKER_URL", "https://api.agents.cloudc.top")
+SERPER_API_KEY = os.environ.get("SERPER_API_KEY", "")
 
 playwright_instance = None
 browser = None
@@ -129,35 +130,21 @@ async def extract(req: ExtractRequest):
 
 @app.post("/search")
 async def search(req: SearchRequest):
-    q = urllib.parse.quote_plus(req.query)
-    url = f"https://search.brave.com/search?q={q}"
-    ctx, page = await _open_page(url)
+    import httpx
     try:
-        screenshot_url = await _maybe_screenshot(page, req, "_search")
-        results = []
-        items = await page.query_selector_all("#results .snippet")
-        for item in items[:10]:
-            try:
-                title_el = await item.query_selector("a .title")
-                if not title_el:
-                    title_el = await item.query_selector("a")
-                link_el = await item.query_selector("a[href]")
-                snippet_el = await item.query_selector(".snippet-description")
-                title_text = (await title_el.inner_text()).strip() if title_el else ""
-                href = await link_el.get_attribute("href") if link_el else ""
-                snippet = (await snippet_el.inner_text()).strip() if snippet_el else ""
-                if title_text and href and href.startswith("http"):
-                    results.append({"title": title_text, "url": href, "snippet": snippet[:200]})
-            except:
-                continue
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post("https://google.serper.dev/search",
+                headers={"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"},
+                json={"q": req.query, "num": 10})
+            data = resp.json()
+        results = [{"title": r["title"], "url": r["link"], "snippet": r.get("snippet", "")[:200]}
+                   for r in data.get("organic", [])]
         text = "\n".join(f"{i+1}. {r['title']}\n   {r['url']}\n   {r['snippet']}" for i, r in enumerate(results))
-        return {"text": text or "No results found", "screenshot_url": screenshot_url,
+        return {"text": text or "No results found", "screenshot_url": "",
                 "results": results,
                 "metadata": {"query": req.query, "result_count": len(results), "timestamp": int(time.time())}}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        await ctx.close()
 
 
 @app.get("/health")

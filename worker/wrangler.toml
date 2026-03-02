@@ -2,17 +2,43 @@
 name = "cf-agent"
 main = "src/index.ts"
 compatibility_date = "2025-02-26"
+compatibility_flags = ["nodejs_compat"]
 
 [durable_objects]
 bindings = [
-  { name = "AGENT_SESSION", class_name = "AgentSession" }
+  { name = "AgentSession", class_name = "AgentSession" },
+  { name = "Sandbox", class_name = "Sandbox" }
 ]
+
+[[containers]]
+class_name = "Sandbox"
+name = "cf-agent-sandbox"
+image = "./Dockerfile"
+instance_type = "standard-1"
+
+[[workflows]]
+name = "agent-task-workflow"
+binding = "AGENT_TASK_WORKFLOW"
+class_name = "AgentTaskWorkflow"
 
 [[migrations]]
 tag = "v1"
 new_classes = ["AgentSession"]
 
+[[migrations]]
+tag = "v2"
+deleted_classes = ["AgentSession"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["AgentSession"]
+
+[[migrations]]
+tag = "v4"
+new_sqlite_classes = ["Sandbox"]
+
 [vars]
+SANDBOX_TRANSPORT = "websocket"
 SANDBOX_URL = "http://sandbox.agents.cloudc.top:9090"
 AI_GATEWAY_BASE = "https://gateway.ai.cloudflare.com/v1/846663c4c93fe5665f3b727025f534c9/cf-agent-gateway/compat"
 AI_MODEL = "workers-ai/@cf/zai-org/glm-4.7-flash"

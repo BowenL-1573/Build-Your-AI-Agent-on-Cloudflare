@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Zap, Plus, LogOut, Play, CheckCircle, Clock, AlertCircle,
-  Terminal, Globe, X, Send, Loader2, Trash2,
+  Terminal, Globe, X, Send, Loader2, Trash2, RefreshCw,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
@@ -15,17 +15,28 @@ interface Task {
   id: string;
   name: string;
   description: string;
-  status: 'running' | 'completed' | 'failed';
+  status: 'running' | 'completed' | 'failed' | 'waiting_approval';
   progress: number;
   createdAt: string;
   logs: string[];
   screenshots: string[];
   plan?: { id: number; description: string; status: string }[];
+  pendingApproval?: { message: string; workflowId: string; timeout?: number; startTime?: number };
 }
 
 function getToken() { return localStorage.getItem('token') || ''; }
 function getUsername(): string {
   try { const [, u] = atob(getToken()).split(':'); return u || 'User'; } catch { return 'User'; }
+}
+
+function CountdownTimer({ startTime, timeout, onExpire }: { startTime: number; timeout: number; onExpire: () => void }) {
+  const [remaining, setRemaining] = useState(Math.max(0, timeout - Math.floor((Date.now() - startTime) / 1000)));
+  useEffect(() => {
+    if (remaining <= 0) { onExpire(); return; }
+    const timer = setTimeout(() => setRemaining(r => r - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [remaining]);
+  return <span className="text-yellow-400 font-mono">{remaining}s</span>;
 }
 
 // --- API helpers ---
@@ -168,9 +179,9 @@ const TaskCard = ({ task, onClick, onDelete }: { task: Task; onClick: () => void
 };
 
 // --- Task Detail Panel ---
-const TaskDetailPanel = ({ task, onClose, tasks, onSendMessage, onUpdateTask }: {
+const TaskDetailPanel = ({ task, onClose, tasks, onSendMessage, onUpdateTask, taskWsMap }: {
   task: Task | null; onClose: () => void; tasks: Task[]; onSendMessage: (id: string, msg: string) => void;
-  onUpdateTask: (id: string, updates: Partial<Task>) => void;
+  onUpdateTask: (id: string, updates: Partial<Task>) => void; taskWsMap: Map<string, WebSocket>;
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [message, setMessage] = useState('');
@@ -203,7 +214,7 @@ const TaskDetailPanel = ({ task, onClose, tasks, onSendMessage, onUpdateTask }: 
   const send = () => { if (!message.trim()) return; onSendMessage(live.id, message); setMessage(''); };
 
   return (
-    <div ref={ref} className="fixed right-0 top-0 h-full w-1/2 glass-strong border-l border-white/5 z-40 flex flex-col" style={{ transform: 'translateX(100%)' }}>
+    <div ref={ref} className="fixed right-0 top-0 h-full w-[58%] glass-strong border-l border-white/5 z-40 flex flex-col" style={{ transform: 'translateX(100%)' }}>
       <div className="h-14 border-b border-white/5 flex items-center justify-between px-6 shrink-0">
         <h3 className="text-lg font-semibold text-white">任务详情</h3>
         <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/5"><X className="w-5 h-5 text-gray-400" /></button>
@@ -232,8 +243,9 @@ const TaskDetailPanel = ({ task, onClose, tasks, onSendMessage, onUpdateTask }: 
             {live.status === 'running' && <Loader2 className="w-4 h-4 animate-spin text-blue-400" />}
             {live.status === 'completed' && <CheckCircle className="w-4 h-4 text-green-400" />}
             {live.status === 'failed' && <AlertCircle className="w-4 h-4 text-red-400" />}
-            <span className={live.status === 'running' ? 'text-blue-400' : live.status === 'completed' ? 'text-green-400' : 'text-red-400'}>
-              {live.status === 'running' ? '运行中' : live.status === 'completed' ? '已完成' : '失败'}
+            {live.status === 'waiting_approval' && <Clock className="w-4 h-4 text-yellow-400" />}
+            <span className={live.status === 'running' ? 'text-blue-400' : live.status === 'completed' ? 'text-green-400' : live.status === 'waiting_approval' ? 'text-yellow-400' : 'text-red-400'}>
+              {live.status === 'running' ? '运行中' : live.status === 'completed' ? '已完成' : live.status === 'waiting_approval' ? '等待确认' : '失败'}
             </span>
             <span className="ml-auto text-white font-medium">{Math.round(live.progress)}%</span>
           </div>
@@ -241,6 +253,43 @@ const TaskDetailPanel = ({ task, onClose, tasks, onSendMessage, onUpdateTask }: 
             <div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500" style={{ width: `${live.progress}%` }} />
           </div>
         </div>
+
+        {live.pendingApproval && (
+          <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30 space-y-3">
+            <div className="flex items-center gap-2 text-yellow-400 text-sm font-medium">
+              <AlertCircle className="w-4 h-4" />{live.pendingApproval.timeout ? '确认计划' : '需要确认'}
+              {live.pendingApproval.timeout && live.pendingApproval.startTime && (
+                <CountdownTimer startTime={live.pendingApproval.startTime} timeout={live.pendingApproval.timeout} onExpire={() => {
+                  const ws = taskWsMap.get(live.id); ws?.send(JSON.stringify({ type: 'approve', userInput: '' }));
+                  onUpdateTask(live.id, { status: 'running', pendingApproval: undefined, logs: [...live.logs, '⏱️ 超时自动执行'] });
+                }} />
+              )}
+            </div>
+            <p className="text-sm text-gray-300 whitespace-pre-wrap">{live.pendingApproval.message}</p>
+            <textarea id={`help-input-${live.id}`} placeholder="输入建议或指导（可选）..." rows={2}
+              className="w-full bg-gray-800 border border-gray-600 rounded-lg p-2 text-sm text-gray-200 placeholder-gray-500 focus:border-yellow-500 focus:outline-none" />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => { const ws = taskWsMap.get(live.id);
+                ws?.send(JSON.stringify({ type: 'approve', userInput: '' }));
+                onUpdateTask(live.id, { status: 'running', pendingApproval: undefined, logs: [...live.logs, '✅ 确认执行'] }); }}
+                className="bg-green-600 hover:bg-green-700 text-white text-xs">
+                <CheckCircle className="w-3 h-3 mr-1" />确认执行
+              </Button>
+              <Button size="sm" onClick={() => { const ws = taskWsMap.get(live.id); const input = (document.getElementById(`help-input-${live.id}`) as HTMLTextAreaElement)?.value || '';
+                if (!input.trim()) return alert('请先输入修改建议');
+                ws?.send(JSON.stringify({ type: 'approve', userInput: input }));
+                onUpdateTask(live.id, { status: 'running', pendingApproval: undefined, logs: [...live.logs, `🔄 修改建议: ${input}`] }); }}
+                className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs">
+                <RefreshCw className="w-3 h-3 mr-1" />修改计划
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => { const ws = taskWsMap.get(live.id); ws?.send(JSON.stringify({ type: 'reject', reason: '用户拒绝' }));
+                onUpdateTask(live.id, { status: 'failed', pendingApproval: undefined, logs: [...live.logs, '❌ 已拒绝'] }); }}
+                className="border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs">
+                <X className="w-3 h-3 mr-1" />终止任务
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Scrollable: logs */}
@@ -358,9 +407,17 @@ const Dashboard = () => {
             return { ...t, screenshots: [...t.screenshots, imgUrl], logs: [...t.logs, `[screenshot]${imgUrl}`] };
           }
           case 'answer':
-            return { ...t, status: 'completed', progress: 100, logs: [...t.logs, `✅ ${msg.content}`] };
+            return { ...t, status: 'completed', progress: 100, logs: [...t.logs, `✅ ${msg.content}`], pendingApproval: undefined };
           case 'error':
-            return { ...t, status: 'failed', progress: 100, logs: [...t.logs, `❌ ${msg.message}`] };
+            return { ...t, status: 'failed', progress: 100, logs: [...t.logs, `❌ ${msg.message}`], pendingApproval: undefined };
+          case 'approval_required':
+            return { ...t, status: 'waiting_approval', pendingApproval: { message: msg.message, workflowId: msg.workflowId },
+              logs: [...t.logs, `⏸️ 等待确认: ${msg.message}`] };
+          case 'plan_review':
+            return { ...t, status: 'waiting_approval', pendingApproval: { message: msg.message, workflowId: msg.workflowId, timeout: msg.timeout || 30, startTime: Date.now() },
+              logs: [...t.logs, `⏸️ 确认计划（${msg.timeout || 30}秒后自动执行）`] };
+          case 'workflow_complete':
+            return { ...t, status: t.status === 'running' ? 'completed' : t.status, progress: 100 };
           default: return t;
         }
       }));
@@ -374,7 +431,7 @@ const Dashboard = () => {
   const handleCreate = (data: Partial<Task>) => {
     const t: Task = {
       id: crypto.randomUUID(), name: data.name || '', description: data.description || '',
-      status: 'running', progress: 5, createdAt: '刚刚', logs: ['任务已创建，正在连接...'], screenshots: [],
+      status: 'running', progress: 5, createdAt: '刚刚', logs: [`📝 任务: ${data.description || data.name || ''}`, '⏳ 正在初始化沙盒...'], screenshots: [],
     };
     setTasks(prev => [t, ...prev]);
     setSelectedTask(t);
@@ -467,7 +524,7 @@ const Dashboard = () => {
       </div>
 
       <NewTaskModal isOpen={isNewTaskModalOpen} onClose={() => setIsNewTaskModalOpen(false)} onCreate={handleCreate} />
-      <TaskDetailPanel task={selectedTask} onClose={() => setSelectedTask(null)} tasks={tasks} onSendMessage={handleSend} onUpdateTask={handleUpdateTask} />
+      <TaskDetailPanel task={selectedTask} onClose={() => setSelectedTask(null)} tasks={tasks} onSendMessage={handleSend} onUpdateTask={handleUpdateTask} taskWsMap={taskWsMap} />
     </div>
   );
 };

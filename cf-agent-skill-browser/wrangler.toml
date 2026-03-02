@@ -1,0 +1,9 @@
+name = "cf-agent-skill-browser"
+account_id = "846663c4c93fe5665f3b727025f534c9"
+main = "src/index.ts"
+compatibility_date = "2025-02-26"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true  # TODO: 测试完成后改为 false，仅允许 Service Binding 调用
+
+[browser]
+binding = "BROWSER"

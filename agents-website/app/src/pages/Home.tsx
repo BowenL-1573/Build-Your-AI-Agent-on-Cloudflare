@@ -151,13 +151,13 @@ const HeroSection = () => {
         </h1>
 
         <p ref={subtitleRef} className="text-xl md:text-2xl text-gray-400 mb-10 max-w-2xl mx-auto">
-          存算分离架构演示：EC2 执行沙盒 + Cloudflare 边缘智能
+          Pages · Workers · Durable Objects · Workflows · Container · AI Gateway · R2
           <br />
-          R2 · Durable Objects · AI Gateway · Pages
+          全栈 Cloudflare 构建的 AI Agent 架构演示
         </p>
 
         <div ref={buttonsRef} className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link to="/login">
+          <Link to="/dashboard">
             <Button
               size="lg"
               className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-6 text-lg rounded-xl magnetic-btn animate-pulse-glow"
@@ -186,30 +186,30 @@ const ArchitectureSection = () => {
 
   const layers = [
     {
-      name: '执行层',
-      tech: 'EC2 + Playwright',
-      description: '无状态浏览器沙盒，Docker 容器化，可随时销毁重建',
-      color: 'from-orange-500/20 to-red-500/20',
-      borderColor: 'border-orange-500/30',
-    },
-    {
-      name: '存储层',
-      tech: 'Cloudflare R2',
-      description: '截图与中间产物存储，零出网流量费用',
+      name: '前端层',
+      tech: 'Cloudflare Pages',
+      description: 'React SPA 部署在边缘，全球低延迟访问，WebSocket 实时通信',
       color: 'from-blue-500/20 to-cyan-500/20',
       borderColor: 'border-blue-500/30',
     },
     {
-      name: '状态层',
-      tech: 'Durable Objects',
-      description: 'Agent 状态机 + WebSocket 长连接，断点续跑',
+      name: 'API 与状态层',
+      tech: 'Workers + Durable Objects',
+      description: 'Worker 处理路由与认证，DO 管理 Agent 会话状态与 WebSocket 长连接',
       color: 'from-purple-500/20 to-pink-500/20',
       borderColor: 'border-purple-500/30',
     },
     {
-      name: '智能层',
-      tech: 'AI Gateway + Workers AI',
-      description: 'LLM 调度、缓存、限流、可观测性',
+      name: '编排层',
+      tech: 'Workflows + Container',
+      description: 'Workflow 编排 plan-execute 循环，Container 沙盒运行 Playwright 浏览器与 Python 工具',
+      color: 'from-orange-500/20 to-red-500/20',
+      borderColor: 'border-orange-500/30',
+    },
+    {
+      name: '智能与存储层',
+      tech: 'AI Gateway + Workers AI + R2',
+      description: 'AI Gateway 调度 LLM 请求，Workers AI 运行 GLM-4.7，R2 存储截图零出网费',
       color: 'from-green-500/20 to-emerald-500/20',
       borderColor: 'border-green-500/30',
     },
@@ -242,11 +242,11 @@ const ArchitectureSection = () => {
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-20">
           <h2 className="text-4xl md:text-5xl font-bold mb-6">
-            <span className="text-white">存算分离</span>
+            <span className="text-white">全栈</span>
             <span className="gradient-text"> 架构</span>
           </h2>
           <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-            计算在 EC2，状态与存储在 Cloudflare 边缘
+            从前端到 AI 推理，全部运行在 Cloudflare 全球网络
           </p>
         </div>
 
@@ -278,20 +278,20 @@ const FeaturesSection = () => {
   const features = [
     {
       icon: Globe,
-      title: '零 Egress 成本',
-      description: 'Agent 截图存储在 R2，前端展示和 LLM 读取均无出网流量费用，大幅降低多模态 Agent 的运营成本。',
+      title: '全栈一站式',
+      description: '从前端托管、API 路由、状态管理到 AI 推理和对象存储，7 个产品组合覆盖 Agent 全链路，无需拼凑多云服务。',
       color: 'from-blue-500/20 to-cyan-500/20',
     },
     {
       icon: Brain,
-      title: '断点续跑',
-      description: 'Durable Objects 持久化 Agent 状态，沙盒崩溃后自动从最后成功步骤恢复，任务不丢失。',
+      title: '原生 AI 能力',
+      description: 'Workers AI 内置大模型推理，AI Gateway 提供缓存、限流和可观测性，Container 沙盒安全运行任意代码和浏览器。',
       color: 'from-purple-500/20 to-pink-500/20',
     },
     {
       icon: Shield,
-      title: 'LLM 可观测性',
-      description: 'AI Gateway 提供 Token 消耗追踪、Prompt 缓存、按租户限流，完整的 LLM 运营视角。',
+      title: '可靠且低成本',
+      description: 'Workflows 持久化编排确保长任务可靠完成，R2 零出网费大幅降低存储成本，全球边缘网络保障低延迟访问。',
       color: 'from-green-500/20 to-emerald-500/20',
     },
   ];
@@ -324,10 +324,10 @@ const FeaturesSection = () => {
         <div className="text-center mb-20">
           <h2 className="text-4xl md:text-5xl font-bold mb-6">
             <span className="text-white">为什么选择</span>
-            <span className="gradient-text"> 存算分离</span>
+            <span className="gradient-text"> Cloudflare</span>
           </h2>
           <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-            解决 AI Agent SaaS 的三个核心痛点
+            解决 AI Agent 构建的三个核心挑战
           </p>
         </div>
 
@@ -372,23 +372,23 @@ const HowItWorksSection = () => {
 
   const steps = [
     {
-      name: '用户输入指令',
-      description: '通过 WebSocket 发送自然语言任务到 Durable Object',
+      name: '用户输入任务',
+      description: '通过 Pages 前端发送自然语言研究任务，WebSocket 连接到 Worker',
       color: 'from-purple-600 to-pink-600',
     },
     {
       name: 'Agent 制定计划',
-      description: 'LLM 通过 AI Gateway 分析任务，制定 Plan → Reason → Act → Observe 执行计划',
+      description: 'Workflow 调用 Workers AI (GLM-4.7) 生成结构化研究计划，用户可审核、修改或直接执行',
       color: 'from-blue-600 to-cyan-600',
     },
     {
-      name: '沙盒执行',
-      description: 'DO 调度 EC2 上的 Playwright 沙盒访问网页、提取文本、截图上传 R2',
+      name: 'Container 沙盒执行',
+      description: 'Workflow 驱动 ReAct 循环，在 Container 沙盒中运行搜索、浏览器抓取、Python 数据处理等工具',
       color: 'from-orange-600 to-red-600',
     },
     {
-      name: '结果总结',
-      description: 'LLM 分析执行结果，循环执行直到任务完成，实时流式推送给前端',
+      name: '生成研究报告',
+      description: 'Agent 综合所有信息撰写结构化报告，截图存储到 R2，结果实时推送到前端',
       color: 'from-green-600 to-emerald-600',
     },
   ];
@@ -469,14 +469,14 @@ const CTASection = () => {
       <div className="relative z-10 max-w-4xl mx-auto text-center">
         <h2 className="text-4xl md:text-6xl font-bold text-white mb-6">
           体验
-          <span className="gradient-text"> 存算分离</span>
+          <span className="gradient-text"> 全栈 Cloudflare</span>
           <br />
-          架构的威力
+          Agent 的威力
         </h2>
         <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto">
-          输入一个研究任务，看 Agent 如何在 Cloudflare 边缘完成思考与调度
+          输入一个研究任务，看 Agent 如何在 Cloudflare 上完成规划、搜索与报告生成
         </p>
-        <Link to="/login">
+        <Link to="/dashboard">
           <Button
             size="lg"
             className="bg-purple-600 hover:bg-purple-700 text-white px-10 py-7 text-xl rounded-xl magnetic-btn animate-pulse-glow"
@@ -504,7 +504,7 @@ const Footer = () => {
           </div>
 
           <div className="text-gray-500 text-sm">
-            Powered by Cloudflare Workers · Durable Objects · R2 · AI Gateway · Pages
+            Powered by Pages · Workers · Durable Objects · Workflows · Container · AI Gateway · R2
           </div>
         </div>
       </div>
@@ -515,6 +515,7 @@ const Footer = () => {
 // Navigation
 const Navigation = () => {
   const [scrolled, setScrolled] = useState(false);
+  const loggedIn = !!localStorage.getItem('token');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -544,11 +545,20 @@ const Navigation = () => {
           <a href="#how-it-works" className="text-gray-300 hover:text-white transition-colors">流程</a>
         </div>
 
-        <Link to="/login">
-          <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
-            登录
-          </Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          {loggedIn && (
+            <Link to="/dashboard">
+              <Button className="bg-purple-600 hover:bg-purple-700 text-white">
+                进入控制台
+              </Button>
+            </Link>
+          )}
+          <Link to="/login">
+            <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
+              {loggedIn ? '切换账户' : '登录'}
+            </Button>
+          </Link>
+        </div>
       </div>
     </nav>
   );
