@@ -53,3 +53,5 @@ binding = "R2"
 bucket_name = "sandbox"
 
 # CF_AIG_TOKEN 通过 wrangler secret 设置
+# SERPER_API_KEY 通过 wrangler secret 设置
+# JINA_API_KEY 通过 wrangler secret 设置

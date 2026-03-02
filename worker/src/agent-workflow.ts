@@ -139,7 +139,7 @@ async function uploadScreenshot(sandbox: Sandbox, ssPath: string, taskId: string
 
 async function callSandbox(env: Env, sandbox: Sandbox, taskDir: string, name: string, args: any, taskId: string, username: string): Promise<any> {
   // Ensure env vars are set (idempotent, survives container restarts)
-  if ((env as any).SERPER_API_KEY) await sandbox.setEnvVars({ SERPER_API_KEY: (env as any).SERPER_API_KEY });
+  if ((env as any).SERPER_API_KEY) await sandbox.setEnvVars({ SERPER_API_KEY: (env as any).SERPER_API_KEY, ...((env as any).JINA_API_KEY ? { JINA_API_KEY: (env as any).JINA_API_KEY } : {}) });
 
   if (name === "search") {
     const r = await sandbox.exec(`python3 /workspace/search.py '${args.query.replace(/'/g, "'\\''")}'`, { timeout: 30000 });
@@ -231,7 +231,7 @@ export class AgentTaskWorkflow extends AgentWorkflow<AgentSession, TaskParams> {
         }
       }
     }
-    if ((env as any).SERPER_API_KEY) await sandbox.setEnvVars({ SERPER_API_KEY: (env as any).SERPER_API_KEY });
+    if ((env as any).SERPER_API_KEY) await sandbox.setEnvVars({ SERPER_API_KEY: (env as any).SERPER_API_KEY, ...((env as any).JINA_API_KEY ? { JINA_API_KEY: (env as any).JINA_API_KEY } : {}) });
     const taskDir = `/workspace/${taskId}`;
     await sandbox.exec(`mkdir -p ${taskDir}/tmp`);
 
@@ -454,7 +454,7 @@ export class AgentTaskWorkflow extends AgentWorkflow<AgentSession, TaskParams> {
               if (e.message?.includes("WebSocket")) {
                 console.log(`[${fn.name}] WebSocket error, reconnecting sandbox...`);
                 sandbox = await getSandbox(env.Sandbox, "shared");
-                if ((env as any).SERPER_API_KEY) await sandbox.setEnvVars({ SERPER_API_KEY: (env as any).SERPER_API_KEY });
+                if ((env as any).SERPER_API_KEY) await sandbox.setEnvVars({ SERPER_API_KEY: (env as any).SERPER_API_KEY, ...((env as any).JINA_API_KEY ? { JINA_API_KEY: (env as any).JINA_API_KEY } : {}) });
                 await sandbox.exec(`mkdir -p ${taskDir}/tmp`);
                 return await callSandbox(env, sandbox, taskDir, fn.name, args, taskId, username);
               }
