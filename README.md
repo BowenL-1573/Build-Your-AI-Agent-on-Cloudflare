@@ -1,6 +1,6 @@
-# CF-Agent: Web Research Agent on Cloudflare
+# Build Your AI Agent on Cloudflare
 
-全栈运行在 Cloudflare 上的 AI Web Research Agent，展示 Cloudflare 产品矩阵在 AI Agent 场景下的能力。
+本项目为全栈运行在 Cloudflare 上的 AI Web Research Agent，旨在通过此项目体现 Cloudflare Developer Platform 的架构。
 
 ![Architecture](./agents-website/app/public/images/Architecture-on-Cloudlfare.png)
 
@@ -187,15 +187,11 @@ cf-agent/
 
 ## 常见问题
 
-**Q: 免费计划够用吗？**  
-A: 够。Cloudflare 免费计划包含：
-- Workers: 100,000 请求/天
-- D1: 5GB 存储 + 500 万行读取/天
-- R2: 10GB 存储 + 1000 万次读取/月
-- Sandbox: 10 个并发实例
-
 **Q: 为什么需要 Serper API Key？**  
 A: Agent 的 `search` 工具需要调用搜索引擎。Serper 提供免费 2500 次/月额度。
+
+**Q: 为什么需要 Jina API Key？**  
+A: Jina Reader 提供更好的网页内容提取能力（去除广告、导航栏等噪音）。可选配置，不设置则使用 httpx 直接抓取。
 
 **Q: 可以用其他 LLM 吗？**  
 A: 可以。修改 `wrangler.toml` 中的 `AI_MODEL` 变量，支持所有 Workers AI 模型。
