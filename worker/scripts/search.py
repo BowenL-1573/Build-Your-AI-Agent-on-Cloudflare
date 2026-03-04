@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Google search via Serper API. Usage: python3 search.py <query>"""
+"""Google search via Serper API."""
 import sys, json, os
 import httpx
 
@@ -15,6 +15,6 @@ def search(query):
             for i in data.get("organic", [])]
 
 if __name__ == "__main__":
-    q = " ".join(sys.argv[1:])
+    q = sys.argv[1] if len(sys.argv) > 1 else ""
     if not q: print(json.dumps({"error": "no query"})); sys.exit(1)
     print(json.dumps(search(q), ensure_ascii=False))

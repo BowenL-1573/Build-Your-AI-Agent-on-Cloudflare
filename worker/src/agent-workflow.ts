@@ -75,27 +75,37 @@ function getSystemPrompt() {
 ## Language Rule
 ALWAYS respond in the same language as the user's input.
 
+## What is a "Step"?
+- 1 step = 1 LLM call where you can make up to 5 parallel tool calls
+- Example: calling search + fetch + fetch + navigate in one response = 1 step (4 tools)
+- You have a budget of ~20 steps total for the entire task
+- Each plan step has an estimated budget — try to stay within it
+
 ## Critical Rules
 1. NEVER fabricate URLs, data, dates, or facts. If a tool fails, report the failure.
 2. If fetch returns empty/login-wall, switch to **navigate** or try a different URL. NEVER retry the same failing URL.
 3. Max 2 retries per approach. After that, move on.
 4. **Max 5 tool calls per response.** They run in PARALLEL, so use all 5 to fetch/search multiple sources at once. More will be skipped.
-5. **Budget awareness**: You have limited steps. Prioritize breadth over depth — gather key info from search snippets first, only fetch/navigate pages that are truly essential.
+5. **Budget awareness**: Follow your plan's budget allocation. If a step is taking too many iterations, move to the next step.
 6. Keep reasoning under 50 words.
 7. **Act autonomously.** You have full authority to search, fetch, navigate, and write files. NEVER ask the user for permission or confirmation — just do it. Only use **request_help** when you are truly stuck and cannot proceed.
 8. **NEVER visit the same URL twice.** If a page returned no useful content, move on to a different source.
 
 ## Workflow
-1. Follow the plan steps IN ORDER. After each plan step, assess: do I have enough info?
+1. Follow the plan steps IN ORDER. Track your budget for each step.
 2. **Search snippets are often sufficient.** Only fetch a page if the snippet lacks critical details.
 3. When you have enough information (even if imperfect), STOP researching and write the report.
-4. Use **write_file** to save the final report as \`report.md\`, then your NEXT response (with NO tool calls) MUST be a complete summary of the report in the user's language. This summary IS the final answer the user sees.
+4. Use **write_file** to save the final report as \`report.md\`, then your NEXT response (with NO tool calls) MUST be a complete summary of the report in the user's language.
 
-## Final Answer
-- MUST be a substantial summary of the report (at least 200 chars). NOT a status update like "report written" or "task complete".
-- MUST directly answer the user's question with a structured, complete response.
-- NEVER end with "next steps" or "plan to do more research".
-- If info is incomplete after reasonable effort, write what you have and note the gaps.`;
+## Final Answer Requirements (CRITICAL)
+After write_file, your next response MUST:
+- Be at least 500 characters (Chinese) or 300 words (English)
+- Include a structured summary with clear sections
+- Directly answer the user's question with key findings
+- Cite 2-3 specific facts or data points from your research
+- Use the same language as the user's input
+- NOT be a status update like "report written" or "task complete"
+- NOT end with "next steps" or "plan to do more research"`;
 }
 
 function parsePlanJSON(raw: string): PlanStep[] | null {
@@ -137,14 +147,20 @@ async function uploadScreenshot(sandbox: Sandbox, ssPath: string, taskId: string
   } catch { return undefined; }
 }
 
-async function callSandbox(env: Env, sandbox: Sandbox, taskDir: string, name: string, args: any, taskId: string, username: string): Promise<any> {
-  // Ensure env vars are set (idempotent, survives container restarts)
-  if ((env as any).SERPER_API_KEY) await sandbox.setEnvVars({ SERPER_API_KEY: (env as any).SERPER_API_KEY, ...((env as any).JINA_API_KEY ? { JINA_API_KEY: (env as any).JINA_API_KEY } : {}) });
+// Session type - subset of Sandbox methods used in callSandbox
+type SandboxSession = {
+  exec: Sandbox["exec"];
+  readFile: Sandbox["readFile"];
+  writeFile: Sandbox["writeFile"];
+};
+
+async function callSandbox(env: Env, session: SandboxSession, sandbox: Sandbox, taskDir: string, name: string, args: any, taskId: string, username: string): Promise<any> {
+  const execEnv = { SERPER_API_KEY: (env as any).SERPER_API_KEY || "", JINA_API_KEY: (env as any).JINA_API_KEY || "" };
 
   if (name === "search") {
-    const r = await sandbox.exec(`python3 /workspace/search.py '${args.query.replace(/'/g, "'\\''")}'`, { timeout: 30000 });
+    const q = (args.query || "").replace(/'/g, "'\\''");
+    const r = await sandbox.exec(`python3 /workspace/search.py '${q}'`, { timeout: 30000, cwd: taskDir, env: execEnv });
     if (!r.success) return { text: `search failed: ${r.stderr}`, metadata: {} };
-    console.log(`[search] stdout=${r.stdout.substring(0, 500)}, stderr=${r.stderr?.substring(0, 200)}`);
     const items = JSON.parse(r.stdout);
     if (items.length === 0) return { text: "search returned 0 results, try different query", metadata: { title: "Search results", url: `bing.com/search?q=${args.query}` } };
     const text = items.map((i: any) => `${i.title}\n${i.url}\n${i.snippet}`).join("\n\n");
@@ -153,7 +169,8 @@ async function callSandbox(env: Env, sandbox: Sandbox, taskDir: string, name: st
 
   if (name === "navigate") {
     const ssPath = `${taskDir}/tmp/ss-${Date.now()}.png`;
-    const r = await sandbox.exec(`python3 /workspace/browse.py navigate '${args.url.replace(/'/g, "'\\''")}' '${ssPath}'`, { timeout: 30000 });
+    const params = JSON.stringify({ action: "navigate", url: args.url, screenshot: ssPath }).replace(/'/g, "'\\''");
+    const r = await sandbox.exec(`python3 /workspace/browse.py '${params}'`, { timeout: 30000, cwd: taskDir, env: execEnv });
     if (!r.success) return { text: `navigate failed: ${r.stderr}`, metadata: {} };
     const data = JSON.parse(r.stdout);
     const screenshot_url = await uploadScreenshot(sandbox, ssPath, taskId, env);
@@ -161,7 +178,8 @@ async function callSandbox(env: Env, sandbox: Sandbox, taskDir: string, name: st
   }
 
   if (name === "extract") {
-    const r = await sandbox.exec(`python3 /workspace/extract.py '${args.url.replace(/'/g, "'\\''")}' '${args.selector.replace(/'/g, "'\\''")}'`, { timeout: 20000 });
+    const params = JSON.stringify({ url: args.url, selector: args.selector }).replace(/'/g, "'\\''");
+    const r = await sandbox.exec(`python3 /workspace/extract.py '${params}'`, { timeout: 20000, cwd: taskDir, env: execEnv });
     if (!r.success) return { text: `extract failed: ${r.stderr}`, metadata: {} };
     const data = JSON.parse(r.stdout);
     const text = data.items.map((i: any) => i.href ? `${i.text} → ${i.href}` : i.text).join("\n");
@@ -170,7 +188,8 @@ async function callSandbox(env: Env, sandbox: Sandbox, taskDir: string, name: st
 
   if (name === "fetch") {
     const maxLen = args.max_length || 8000;
-    const r = await sandbox.exec(`python3 /workspace/fetch_url.py '${args.url.replace(/'/g, "'\\''")}' ${maxLen}`, { timeout: 30000 });
+    const url = (args.url || "").replace(/'/g, "'\\''");
+    const r = await sandbox.exec(`python3 /workspace/fetch_url.py '${url}' ${maxLen}`, { timeout: 30000, cwd: taskDir, env: execEnv });
     if (!r.success) return { text: `fetch failed: ${r.stderr}`, metadata: {} };
     return { text: r.stdout, metadata: { title: "", url: args.url } };
   }
@@ -178,28 +197,28 @@ async function callSandbox(env: Env, sandbox: Sandbox, taskDir: string, name: st
   if (name === "read_file") {
     const filePath = `${taskDir}/${args.path}`;
     try {
-      const f = await sandbox.readFile(filePath);
+      const f = await session.readFile(filePath);
       return { text: f.content, metadata: { path: args.path } };
     } catch (e: any) { return { text: `read_file failed: ${e.message}`, metadata: {} }; }
   }
 
   if (name === "write_file") {
     const filePath = `${taskDir}/${args.path}`;
-    await sandbox.exec(`mkdir -p $(dirname '${filePath}')`);
-    await sandbox.writeFile(filePath, args.content);
+    await session.exec(`mkdir -p $(dirname '${filePath}')`);
+    await session.writeFile(filePath, args.content);
     return { text: `wrote ${args.content.length} chars to ${args.path}`, metadata: { path: args.path } };
   }
 
   if (name === "python") {
     const scriptPath = `${taskDir}/tmp/_run.py`;
-    await sandbox.writeFile(scriptPath, args.code);
-    const r = await sandbox.exec(`python3 ${scriptPath}`, { timeout: 30000, cwd: taskDir });
+    await session.writeFile(scriptPath, args.code);
+    const r = await session.exec(`python3 ${scriptPath}`, { timeout: 30000 });
     return { text: r.stdout + (r.stderr ? `\nSTDERR: ${r.stderr}` : ""), metadata: { exitCode: r.exitCode } };
   }
 
   if (name === "exec") {
     const timeout = Math.min((args.timeout || 15) * 1000, 30000);
-    const r = await sandbox.exec(args.command, { timeout, cwd: taskDir });
+    const r = await session.exec(args.command, { timeout });
     return { text: r.stdout + (r.stderr ? `\nSTDERR: ${r.stderr}` : ""), metadata: { exitCode: r.exitCode } };
   }
 
@@ -215,25 +234,51 @@ export class AgentTaskWorkflow extends AgentWorkflow<AgentSession, TaskParams> {
     // Durably mark Agent as running
     await step.mergeAgentState({ status: "running", currentTask: taskId });
 
-    // Pre-warm container and initialize workspace (retry on cold start / updating)
+    // Hash taskId to select sandbox instance (0-9), with failover to other instances
+    const POOL_SIZE = 10;
+    const baseHash = taskId.split("").reduce((h, c) => ((h * 31 + c.charCodeAt(0)) | 0), 0);
+
+    // Pre-warm container (retry on cold start / updating, failover after 2 attempts)
     let sandbox!: Sandbox;
+    let sandboxId = "";
+    await this.reportProgress({ type: "log", message: `🔧 正在连接 Sandbox...` });
+    
     for (let attempt = 0; attempt < 5; attempt++) {
+      // First 2 attempts on primary instance, then failover to next instances
+      const instanceOffset = attempt < 2 ? 0 : attempt - 1;
+      sandboxId = `sandbox-${Math.abs(baseHash + instanceOffset) % POOL_SIZE}`;
       try {
-        sandbox = await getSandbox(env.Sandbox, "shared");
+        await this.reportProgress({ type: "log", message: `⏳ 尝试连接 ${sandboxId}（第 ${attempt + 1} 次）...` });
+        sandbox = getSandbox(env.Sandbox, sandboxId);
+        await sandbox.exec("true", { timeout: 60000 });
+        await this.reportProgress({ type: "log", message: `✅ 已连接到 ${sandboxId}` });
+        if (attempt > 0) console.log(`[sandbox] connected to ${sandboxId} on attempt ${attempt + 1}`);
         break;
       } catch (e: any) {
+        console.error(`[sandbox] ${sandboxId} attempt ${attempt + 1} failed:`, e);
+        await this.reportProgress({ type: "log", message: `❌ ${sandboxId} 连接失败: ${e.message}` });
         if (attempt < 4) {
-          console.log(`[sandbox] attempt ${attempt + 1} failed: ${e.message}, retrying in 5s...`);
-          await this.reportProgress({ type: "log", message: `⏳ 沙盒启动中...（第 ${attempt + 2} 次尝试）` });
+          const nextId = `sandbox-${Math.abs(baseHash + (attempt < 1 ? 0 : attempt)) % POOL_SIZE}`;
+          await this.reportProgress({ type: "log", message: `🔄 将尝试 ${nextId}（等待 5 秒）...` });
           await new Promise(r => setTimeout(r, 5000));
         } else {
+          await this.reportProgress({ type: "error", message: `所有 Sandbox 实例连接失败，请稍后重试` });
           throw e;
         }
       }
     }
-    if ((env as any).SERPER_API_KEY) await sandbox.setEnvVars({ SERPER_API_KEY: (env as any).SERPER_API_KEY, ...((env as any).JINA_API_KEY ? { JINA_API_KEY: (env as any).JINA_API_KEY } : {}) });
+
+    // Create isolated session for this task
     const taskDir = `/workspace/${taskId}`;
-    await sandbox.exec(`mkdir -p ${taskDir}/tmp`);
+    const session = await sandbox.createSession({
+      id: taskId,
+      cwd: taskDir,
+      env: {
+        SERPER_API_KEY: (env as any).SERPER_API_KEY || "",
+        JINA_API_KEY: (env as any).JINA_API_KEY || "",
+      },
+    });
+    await session.exec(`mkdir -p ${taskDir}/tmp`);
 
     try {
 
@@ -241,7 +286,26 @@ export class AgentTaskWorkflow extends AgentWorkflow<AgentSession, TaskParams> {
     await this.reportProgress({ type: "log", message: `📝 任务: ${userMessage}` });
 
     // Step 1: Plan
-    const planSysPrompt = `You are a planning assistant. Output ONLY a JSON object. No explanation, no markdown.\nFormat: {"steps": [{"id": 1, "description": "..."}, ...]}\nRules:\n- RESPOND IN THE SAME LANGUAGE AS THE USER INPUT\n- Max 5 steps. Each step can involve MULTIPLE tool calls.\n- Be concrete: specify what to search/fetch in each step\n- Reserve the LAST step for writing the final report (write_file)\n- Prefer search snippets over fetching full pages when possible`;
+    const planSysPrompt = `You are a planning assistant. Output ONLY a JSON object. No explanation, no markdown.
+Format: {"steps": [{"id": 1, "description": "...", "budget": 3}, ...]}
+
+## Step Budget Rules
+- Total budget: 20 iterations (each iteration = 1 LLM call with up to 5 parallel tool calls)
+- Each plan step MUST specify a "budget" (estimated iterations needed)
+- Example budgets:
+  * Simple search + read snippets: 1-2 iterations
+  * Search + fetch 2-3 pages: 2-3 iterations
+  * Complex research (multiple sources): 3-5 iterations
+  * Write final report: 1 iteration
+- Sum of all budgets should be ≤ 18 (leave 2 for buffer)
+
+## Planning Rules
+- RESPOND IN THE SAME LANGUAGE AS THE USER INPUT
+- Max 5 steps total
+- Be concrete: specify what to search/fetch in each step
+- Reserve the LAST step for writing the final report (write_file, budget: 1)
+- Prefer search snippets over fetching full pages to save budget
+- If task is simple, use fewer steps with smaller budgets`;
     const plan = await step.do("plan", { retries: { limit: 2, delay: "3 seconds" } }, async () => {
       const msgs: ChatMessage[] = [
         { role: "system", content: planSysPrompt },
@@ -325,16 +389,16 @@ export class AgentTaskWorkflow extends AgentWorkflow<AgentSession, TaskParams> {
 
       // LLM decision
       const remaining = MAX_STEPS - i;
-      const budgetHint = remaining <= 5 ? `\n\n⚠️ ONLY ${remaining} steps left. Wrap up NOW — either use write_file to save the report OR directly provide your complete final answer.` : remaining <= 10 ? `\n\n📊 ${remaining} steps remaining. Start wrapping up soon.` : "";
+      const budgetHint = remaining <= 5 ? `\n\n⚠️ CRITICAL: Only ${remaining} steps left. You MUST finish NOW — write the report with write_file OR provide your final answer.` : remaining <= 10 ? `\n\n⚠️ Budget alert: ${remaining} steps remaining. Start wrapping up — move to report writing soon.` : `\n\n📊 Budget: ${remaining}/20 steps remaining.`;
       
       const llmResult = await step.do(`llm-${i}`, { retries: { limit: 3, delay: "5 seconds", backoff: "exponential" } }, async () => {
         // Compact older messages before calling LLM
         const totalChars = messages.reduce((sum, m) => sum + (m.content?.length || 0), 0);
-        if (totalChars > 32000) {
+        if (totalChars > 200000) {
           const toolMsgs = messages.filter(x => x.role === "tool");
-          for (let j = 0; j < toolMsgs.length - 3; j++) {
-            if (toolMsgs[j].content && toolMsgs[j].content!.length > 500) {
-              toolMsgs[j].content = toolMsgs[j].content!.substring(0, 300) + "\n[compacted]";
+          for (let j = 0; j < toolMsgs.length - 5; j++) {
+            if (toolMsgs[j].content && toolMsgs[j].content!.length > 1000) {
+              toolMsgs[j].content = toolMsgs[j].content!.substring(0, 500) + "\n[compacted]";
             }
           }
         }
@@ -448,18 +512,7 @@ export class AgentTaskWorkflow extends AgentWorkflow<AgentSession, TaskParams> {
               const s = steps[args.step_index];
               return s ? { text: s.fullResult, metadata: { source: `step ${args.step_index}` } } : { text: `No step at index ${args.step_index}`, metadata: {} };
             }
-            try {
-              return await callSandbox(env, sandbox, taskDir, fn.name, args, taskId, username);
-            } catch (e: any) {
-              if (e.message?.includes("WebSocket")) {
-                console.log(`[${fn.name}] WebSocket error, reconnecting sandbox...`);
-                sandbox = await getSandbox(env.Sandbox, "shared");
-                if ((env as any).SERPER_API_KEY) await sandbox.setEnvVars({ SERPER_API_KEY: (env as any).SERPER_API_KEY, ...((env as any).JINA_API_KEY ? { JINA_API_KEY: (env as any).JINA_API_KEY } : {}) });
-                await sandbox.exec(`mkdir -p ${taskDir}/tmp`);
-                return await callSandbox(env, sandbox, taskDir, fn.name, args, taskId, username);
-              }
-              throw e;
-            }
+            return await callSandbox(env, session, sandbox, taskDir, fn.name, args, taskId, username);
           });
         } catch (e: any) {
           toolResult = { text: `Tool ${fn.name} failed: ${e.message}`, metadata: {} };
@@ -530,8 +583,9 @@ export class AgentTaskWorkflow extends AgentWorkflow<AgentSession, TaskParams> {
     });
     return { status: "failed", error: "Max steps reached" };
     } finally {
-      // Cleanup workspace
-      await sandbox.exec(`rm -rf ${taskDir}`).catch(() => {});
+      // Cleanup: remove task directory and delete session
+      await session.exec(`rm -rf ${taskDir}`).catch(() => {});
+      await sandbox.deleteSession(taskId).catch(() => {});
     }
   }
 }

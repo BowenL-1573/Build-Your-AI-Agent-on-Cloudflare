@@ -169,6 +169,7 @@ const Login = () => {
       <Link
         to="/"
         className="absolute top-6 left-6 z-20 flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+        data-track="login-back-home"
       >
         <ArrowLeft className="w-5 h-5" />
         <span>返回首页</span>
@@ -178,7 +179,7 @@ const Login = () => {
         <div className="w-full max-w-5xl grid lg:grid-cols-2 gap-12 items-center">
           {/* Left Side - Branding */}
           <div ref={leftRef} className="hidden lg:block text-center lg:text-left">
-            <Link to="/" className="inline-flex items-center gap-3 mb-8">
+            <Link to="/" className="inline-flex items-center gap-3 mb-8" data-track="login-logo-desktop">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
                 <Zap className="w-7 h-7 text-white" />
               </div>
@@ -199,7 +200,7 @@ const Login = () => {
             <div className="glass rounded-3xl p-8 md:p-10">
               {/* Mobile Logo */}
               <div className="lg:hidden text-center mb-8">
-                <Link to="/" className="inline-flex items-center gap-3">
+                <Link to="/" className="inline-flex items-center gap-3" data-track="login-logo-mobile">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
                     <Zap className="w-6 h-6 text-white" />
                   </div>
@@ -243,6 +244,7 @@ const Login = () => {
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                      data-track="login-toggle-password"
                     >
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
@@ -254,7 +256,7 @@ const Login = () => {
                     <input type="checkbox" className="w-4 h-4 rounded border-white/20 bg-white/5 text-purple-600" />
                     <span className="text-sm text-gray-400">记住我</span>
                   </label>
-                  <a href="#" className="text-sm text-purple-400 hover:text-purple-300 transition-colors">
+                  <a href="#" className="text-sm text-purple-400 hover:text-purple-300 transition-colors" data-track="login-forgot-password">
                     忘记密码？
                   </a>
                 </div>
@@ -269,6 +271,7 @@ const Login = () => {
                   type="submit"
                   disabled={isLoading}
                   className="w-full bg-purple-600 hover:bg-purple-700 text-white h-12 rounded-xl text-lg font-semibold magnetic-btn animate-pulse-glow disabled:opacity-50"
+                  data-track="login-submit"
                 >
                   {isLoading ? (
                     <>
@@ -284,7 +287,7 @@ const Login = () => {
               <div className="mt-8 text-center">
                 <p className="text-gray-400 text-sm">
                   还没有账户？{' '}
-                  <a href="#" className="text-purple-400 hover:text-purple-300 transition-colors">
+                  <a href="#" className="text-purple-400 hover:text-purple-300 transition-colors" data-track="login-contact-sales">
                     联系销售团队
                   </a>
                 </p>

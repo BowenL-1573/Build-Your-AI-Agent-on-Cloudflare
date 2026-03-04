@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Browser tool. Usage:
-  python3 browse.py navigate <url> <screenshot_path>
-  python3 browse.py click <selector> <screenshot_path>
-  python3 browse.py type <selector> <text> <screenshot_path>
-  python3 browse.py screenshot '' <screenshot_path>
-"""
+"""Browser tool. Usage: python browse.py '<json_params>'"""
 import sys, json, os
 
 # Persist page state via saved cookies + URL
@@ -21,15 +16,16 @@ def load_state(context, page):
     if state.get("url"): page.goto(state["url"], wait_until="domcontentloaded", timeout=15000)
     return state
 
-def run(action, args):
+def run(params):
     from playwright.sync_api import sync_playwright
+    action = params.get("action", "navigate")
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
         ctx = browser.new_context(viewport={"width": 1280, "height": 720})
         page = ctx.new_page()
 
         if action == "navigate":
-            url, ss_path = args[0], args[1]
+            url, ss_path = params["url"], params.get("screenshot", "/tmp/ss.png")
             page.goto(url, wait_until="domcontentloaded", timeout=20000)
             page.wait_for_timeout(1000)
             title = page.title()
@@ -39,7 +35,7 @@ def run(action, args):
             print(json.dumps({"title": title, "url": url, "text": text}, ensure_ascii=False))
 
         elif action == "click":
-            selector, ss_path = args[0], args[1]
+            selector, ss_path = params["selector"], params.get("screenshot", "/tmp/ss.png")
             load_state(ctx, page)
             page.click(selector, timeout=5000)
             page.wait_for_timeout(500)
@@ -49,7 +45,8 @@ def run(action, args):
             print(json.dumps({"text": text}, ensure_ascii=False))
 
         elif action == "type":
-            selector, text_val, ss_path = args[0], args[1], args[2]
+            selector, text_val = params["selector"], params["text"]
+            ss_path = params.get("screenshot", "/tmp/ss.png")
             load_state(ctx, page)
             page.fill(selector, text_val, timeout=5000)
             page.wait_for_timeout(300)
@@ -59,7 +56,7 @@ def run(action, args):
             print(json.dumps({"text": text}, ensure_ascii=False))
 
         elif action == "screenshot":
-            ss_path = args[1]
+            ss_path = params.get("screenshot", "/tmp/ss.png")
             load_state(ctx, page)
             page.screenshot(path=ss_path, full_page=False)
             print(json.dumps({"text": "screenshot taken"}, ensure_ascii=False))
@@ -67,5 +64,5 @@ def run(action, args):
         browser.close()
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3: print(json.dumps({"error": "usage: browse.py <action> <args...>"})); sys.exit(1)
-    run(sys.argv[1], sys.argv[2:])
+    params = json.loads(sys.argv[1]) if len(sys.argv) > 1 else {}
+    run(params)

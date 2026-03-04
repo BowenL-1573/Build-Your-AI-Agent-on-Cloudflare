@@ -1,8 +1,12 @@
-"""Fetch URL → Markdown. Jina Reader first (better quality), httpx+html2text fallback."""
+"""Fetch URL → Markdown. Usage: python fetch_url.py <url> [max_length]"""
 import sys, os, httpx, html2text
 
-url = sys.argv[1]
+url = sys.argv[1] if len(sys.argv) > 1 else ""
 max_len = int(sys.argv[2]) if len(sys.argv) > 2 else 8000
+
+if not url:
+    print("No URL provided", file=sys.stderr)
+    sys.exit(1)
 
 JINA_KEY = os.environ.get("JINA_API_KEY", "")
 
@@ -22,7 +26,7 @@ except Exception:
 # Fallback: httpx + html2text
 try:
     r2 = httpx.get(url, headers={
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     }, follow_redirects=True, timeout=15)
     r2.raise_for_status()

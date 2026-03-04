@@ -64,7 +64,7 @@ const Admin = () => {
       <div className="border-b border-white/5 p-6">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/dashboard" className="text-gray-400 hover:text-white"><ArrowLeft className="w-5 h-5" /></Link>
+            <Link to="/dashboard" className="text-gray-400 hover:text-white" data-track="admin-back-dashboard"><ArrowLeft className="w-5 h-5" /></Link>
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-orange-600 flex items-center justify-center">
               <Zap className="w-5 h-5 text-white" />
             </div>
@@ -73,7 +73,7 @@ const Admin = () => {
               <p className="text-sm text-gray-500">DO 状态 · 用户管理 · 任务监控</p>
             </div>
           </div>
-          <Button onClick={load} variant="outline" className="border-white/10 text-white hover:bg-white/5">
+          <Button onClick={load} variant="outline" className="border-white/10 text-white hover:bg-white/5" data-track="admin-refresh">
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />刷新
           </Button>
         </div>
@@ -108,7 +108,7 @@ const Admin = () => {
           <div className="space-y-2">
             {tasks.map(t => (
               <div key={t.id} className="rounded-xl border border-white/5 overflow-hidden">
-                <div onClick={() => toggleTask(t)} className="flex items-center gap-4 p-4 hover:bg-white/5 cursor-pointer">
+                <div onClick={() => toggleTask(t)} className="flex items-center gap-4 p-4 hover:bg-white/5 cursor-pointer" data-track={`admin-task-toggle-${t.id.substring(0, 8)}`}>
                   <span className={`px-2 py-1 rounded text-xs ${statusColor[t.status] || 'text-gray-400 bg-gray-500/10'}`}>{t.status}</span>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">{t.title || t.id}</div>

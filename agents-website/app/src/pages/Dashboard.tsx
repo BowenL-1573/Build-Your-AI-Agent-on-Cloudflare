@@ -61,7 +61,7 @@ async function deleteTask(id: string) {
 const Sidebar = ({ username }: { username: string }) => (
   <div className="w-64 h-screen glass-strong border-r border-white/5 flex flex-col fixed left-0 top-0">
     <div className="p-6 border-b border-white/5">
-      <Link to="/" className="flex items-center gap-3">
+      <Link to="/" className="flex items-center gap-3" data-track="sidebar-logo">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
           <Zap className="w-5 h-5 text-white" />
         </div>
@@ -79,7 +79,7 @@ const Sidebar = ({ username }: { username: string }) => (
           {username.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0"><div className="text-white font-medium truncate">{username}</div></div>
-        <Link to="/"><LogOut className="w-5 h-5 text-gray-400 hover:text-white cursor-pointer" /></Link>
+        <Link to="/" data-track="sidebar-logout"><LogOut className="w-5 h-5 text-gray-400 hover:text-white cursor-pointer" /></Link>
       </div>
     </div>
   </div>
@@ -112,7 +112,7 @@ const NewTaskModal = ({ isOpen, onClose, onCreate }: {
       <div ref={ref} className="relative w-full max-w-lg glass-strong rounded-2xl border border-white/10 p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-white">创建新任务</h2>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/5"><X className="w-5 h-5 text-gray-400" /></button>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/5" data-track="new-task-modal-close"><X className="w-5 h-5 text-gray-400" /></button>
         </div>
         <form onSubmit={submit} className="space-y-6">
           <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
@@ -132,8 +132,8 @@ const NewTaskModal = ({ isOpen, onClose, onCreate }: {
             </div>
           </div>
           <div className="flex gap-3">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1 border-white/10 text-white hover:bg-white/5">取消</Button>
-            <Button type="submit" disabled={!name} className="flex-1 bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"><Play className="w-4 h-4 mr-2" />开始任务</Button>
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1 border-white/10 text-white hover:bg-white/5" data-track="new-task-cancel">取消</Button>
+            <Button type="submit" disabled={!name} className="flex-1 bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50" data-track="new-task-start"><Play className="w-4 h-4 mr-2" />开始任务</Button>
           </div>
         </form>
       </div>
@@ -155,7 +155,8 @@ const TaskCard = ({ task, onClick, onDelete }: { task: Task; onClick: () => void
   return (
     <div className="p-5 rounded-xl glass border border-white/5 hover:border-purple-500/30 transition-all duration-300 cursor-pointer group relative">
       <button onClick={e => { e.stopPropagation(); onDelete(); }}
-        className="absolute top-3 right-3 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/20 transition-all">
+        className="absolute top-3 right-3 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/20 transition-all"
+        data-track="task-delete">
         <Trash2 className="w-4 h-4 text-red-400" />
       </button>
       <div onClick={onClick}>
@@ -217,7 +218,7 @@ const TaskDetailPanel = ({ task, onClose, tasks, onSendMessage, onUpdateTask, ta
     <div ref={ref} className="fixed right-0 top-0 h-full w-[58%] glass-strong border-l border-white/5 z-40 flex flex-col" style={{ transform: 'translateX(100%)' }}>
       <div className="h-14 border-b border-white/5 flex items-center justify-between px-6 shrink-0">
         <h3 className="text-lg font-semibold text-white">任务详情</h3>
-        <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/5"><X className="w-5 h-5 text-gray-400" /></button>
+        <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/5" data-track="task-detail-close"><X className="w-5 h-5 text-gray-400" /></button>
       </div>
 
       {/* Fixed: title + plan + progress */}
@@ -272,19 +273,22 @@ const TaskDetailPanel = ({ task, onClose, tasks, onSendMessage, onUpdateTask, ta
               <Button size="sm" onClick={() => { const ws = taskWsMap.get(live.id);
                 ws?.send(JSON.stringify({ type: 'approve', userInput: '' }));
                 onUpdateTask(live.id, { status: 'running', pendingApproval: undefined, logs: [...live.logs, '✅ 确认执行'] }); }}
-                className="bg-green-600 hover:bg-green-700 text-white text-xs">
+                className="bg-green-600 hover:bg-green-700 text-white text-xs"
+                data-track="task-approve-execute">
                 <CheckCircle className="w-3 h-3 mr-1" />确认执行
               </Button>
               <Button size="sm" onClick={() => { const ws = taskWsMap.get(live.id); const input = (document.getElementById(`help-input-${live.id}`) as HTMLTextAreaElement)?.value || '';
                 if (!input.trim()) return alert('请先输入修改建议');
                 ws?.send(JSON.stringify({ type: 'approve', userInput: input }));
                 onUpdateTask(live.id, { status: 'running', pendingApproval: undefined, logs: [...live.logs, `🔄 修改建议: ${input}`] }); }}
-                className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs">
+                className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs"
+                data-track="task-approve-modify">
                 <RefreshCw className="w-3 h-3 mr-1" />修改计划
               </Button>
               <Button size="sm" variant="outline" onClick={() => { const ws = taskWsMap.get(live.id); ws?.send(JSON.stringify({ type: 'reject', reason: '用户拒绝' }));
                 onUpdateTask(live.id, { status: 'failed', pendingApproval: undefined, logs: [...live.logs, '❌ 已拒绝'] }); }}
-                className="border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs">
+                className="border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs"
+                data-track="task-approve-reject">
                 <X className="w-3 h-3 mr-1" />终止任务
               </Button>
             </div>
@@ -306,7 +310,8 @@ const TaskDetailPanel = ({ task, onClose, tasks, onSendMessage, onUpdateTask, ta
                     <div>
                       <span className="text-sm text-gray-400">截图</span>
                       <img src={imgUrl} alt="screenshot" onClick={() => setLightbox(imgUrl)}
-                        className="mt-2 rounded-lg border border-white/10 max-w-[280px] cursor-pointer hover:border-purple-500/50 transition-colors" />
+                        className="mt-2 rounded-lg border border-white/10 max-w-[280px] cursor-pointer hover:border-purple-500/50 transition-colors"
+                        data-track="task-screenshot-view" />
                     </div>
                   </div>
                 );
@@ -324,8 +329,8 @@ const TaskDetailPanel = ({ task, onClose, tasks, onSendMessage, onUpdateTask, ta
 
       {/* Lightbox */}
       {lightbox && createPortal(
-        <div className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4 cursor-pointer" onClick={() => setLightbox(null)}>
-          <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 p-2 rounded-lg hover:bg-white/10">
+        <div className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4 cursor-pointer" onClick={() => setLightbox(null)} data-track="task-lightbox-close">
+          <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 p-2 rounded-lg hover:bg-white/10" data-track="task-lightbox-close-button">
             <X className="w-6 h-6 text-white" />
           </button>
           <img src={lightbox} alt="screenshot" className="max-w-[90vw] max-h-[90vh] rounded-lg" onClick={e => e.stopPropagation()} />
@@ -337,7 +342,7 @@ const TaskDetailPanel = ({ task, onClose, tasks, onSendMessage, onUpdateTask, ta
         <div className="flex gap-2">
           <Input value={message} onChange={e => setMessage(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()}
             placeholder="向 Agent 发送追加指令..." className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-gray-600 rounded-xl" />
-          <Button size="icon" onClick={send} className="bg-purple-600 hover:bg-purple-700 rounded-xl"><Send className="w-4 h-4" /></Button>
+          <Button size="icon" onClick={send} className="bg-purple-600 hover:bg-purple-700 rounded-xl" data-track="task-send-message"><Send className="w-4 h-4" /></Button>
         </div>
       </div>
     </div>
@@ -472,7 +477,7 @@ const Dashboard = () => {
               <h1 className="text-2xl font-bold text-white mb-1">任务中心</h1>
               <p className="text-gray-500">管理和监控您的 Web Research 任务</p>
             </div>
-            <Button onClick={() => setIsNewTaskModalOpen(true)} className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl">
+            <Button onClick={() => setIsNewTaskModalOpen(true)} className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl" data-track="dashboard-new-task">
               <Plus className="w-4 h-4 mr-2" />新建任务
             </Button>
           </div>
@@ -495,7 +500,8 @@ const Dashboard = () => {
           <div className="flex items-center gap-2 mb-6">
             {(['all', 'running', 'completed'] as const).map(f => (
               <button key={f} onClick={() => setFilter(f)}
-                className={`px-4 py-2 rounded-lg text-sm transition-all ${filter === f ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-white/5'}`}>
+                className={`px-4 py-2 rounded-lg text-sm transition-all ${filter === f ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-white/5'}`}
+                data-track={`dashboard-filter-${f}`}>
                 {f === 'all' ? '全部' : f === 'running' ? '运行中' : '已完成'}
               </button>
             ))}
@@ -515,7 +521,7 @@ const Dashboard = () => {
               </div>
               <h3 className="text-white font-medium mb-2">暂无任务</h3>
               <p className="text-gray-500 mb-4">创建您的第一个 Web Research 任务</p>
-              <Button onClick={() => setIsNewTaskModalOpen(true)} variant="outline" className="border-white/10 text-white hover:bg-white/5">
+              <Button onClick={() => setIsNewTaskModalOpen(true)} variant="outline" className="border-white/10 text-white hover:bg-white/5" data-track="dashboard-empty-new-task">
                 <Plus className="w-4 h-4 mr-2" />新建任务
               </Button>
             </div>

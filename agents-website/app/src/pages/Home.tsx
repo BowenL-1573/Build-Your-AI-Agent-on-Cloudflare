@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Zap, Brain, Shield, Globe, ChevronRight } from 'lucide-react';
+import { ArrowRight, Zap, Brain, Shield, Globe, ChevronRight, Bot, Container } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 
@@ -157,10 +157,11 @@ const HeroSection = () => {
         </p>
 
         <div ref={buttonsRef} className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link to="/dashboard">
+          <Link to="/dashboard" data-track="hero-start-experience">
             <Button
               size="lg"
               className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-6 text-lg rounded-xl magnetic-btn animate-pulse-glow"
+              data-track="hero-start-experience-button"
             >
               开始体验
               <ArrowRight className="ml-2 w-5 h-5" />
@@ -201,15 +202,15 @@ const ArchitectureSection = () => {
     },
     {
       name: '编排层',
-      tech: 'Workflows + Container',
-      description: 'Workflow 编排 plan-execute 循环，Container 沙盒运行 Playwright 浏览器与 Python 工具',
+      tech: 'Workflows',
+      description: 'Workflow 编排 plan → review → execute 循环，管理 Agent 状态与审批流程',
       color: 'from-orange-500/20 to-red-500/20',
       borderColor: 'border-orange-500/30',
     },
     {
-      name: '智能与存储层',
-      tech: 'AI Gateway + Workers AI + R2',
-      description: 'AI Gateway 调度 LLM 请求，Workers AI 运行 GLM-4.7，R2 存储截图零出网费',
+      name: '执行与存储层',
+      tech: 'Container + AI Gateway + Workers AI + R2',
+      description: 'Sandbox 隔离执行工具（Playwright/Python），AI Gateway 调度 LLM，Workers AI 运行 GLM-4.7，R2 存储截图零出网费',
       color: 'from-green-500/20 to-emerald-500/20',
       borderColor: 'border-green-500/30',
     },
@@ -250,6 +251,10 @@ const ArchitectureSection = () => {
           </p>
         </div>
 
+        <div className="mb-12 rounded-2xl overflow-hidden glass border border-purple-500/30">
+          <img src="/images/Architecture-on-Cloudlfare.png" alt="CF-Agent Architecture" className="w-full" />
+        </div>
+
         <div className="grid md:grid-cols-2 gap-6">
           {layers.map((layer, i) => (
             <div
@@ -285,7 +290,7 @@ const FeaturesSection = () => {
     {
       icon: Brain,
       title: '原生 AI 能力',
-      description: 'Workers AI 内置大模型推理，AI Gateway 提供缓存、限流和可观测性，Container 沙盒安全运行任意代码和浏览器。',
+      description: 'Workers AI 内置大模型推理，AI Gateway 提供缓存、限流和可观测性，Sandbox 安全运行任意代码和浏览器。',
       color: 'from-purple-500/20 to-pink-500/20',
     },
     {
@@ -369,27 +374,32 @@ const FeaturesSection = () => {
 // How It Works Section
 const HowItWorksSection = () => {
   const [activeStep, setActiveStep] = useState(0);
+  const [lightbox, setLightbox] = useState(false);
 
   const steps = [
     {
       name: '用户输入任务',
       description: '通过 Pages 前端发送自然语言研究任务，WebSocket 连接到 Worker',
       color: 'from-purple-600 to-pink-600',
+      image: '/images/workflow/step1.png',
     },
     {
       name: 'Agent 制定计划',
       description: 'Workflow 调用 Workers AI (GLM-4.7) 生成结构化研究计划，用户可审核、修改或直接执行',
       color: 'from-blue-600 to-cyan-600',
+      image: '/images/workflow/step2.png',
     },
     {
-      name: 'Container 沙盒执行',
-      description: 'Workflow 驱动 ReAct 循环，在 Container 沙盒中运行搜索、浏览器抓取、Python 数据处理等工具',
+      name: 'Workflow 编排执行',
+      description: 'Workflow 驱动 ReAct 循环（最多 30 步），调度 Sandbox 执行搜索、浏览器抓取、Python 数据处理等工具',
       color: 'from-orange-600 to-red-600',
+      image: '/images/workflow/step3.png',
     },
     {
       name: '生成研究报告',
       description: 'Agent 综合所有信息撰写结构化报告，截图存储到 R2，结果实时推送到前端',
       color: 'from-green-600 to-emerald-600',
+      image: '/images/workflow/step4.png',
     },
   ];
 
@@ -402,12 +412,13 @@ const HowItWorksSection = () => {
           </h2>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="grid lg:grid-cols-2 gap-12 items-start">
           <div className="space-y-4">
             {steps.map((step, i) => (
               <button
                 key={i}
                 onClick={() => setActiveStep(i)}
+                data-track={`workflow-step-${i + 1}`}
                 className={`w-full text-left p-6 rounded-xl transition-all duration-500 ${
                   activeStep === i
                     ? 'glass border-purple-500/50'
@@ -439,17 +450,152 @@ const HowItWorksSection = () => {
           </div>
 
           <div className="relative">
-            <div className="relative rounded-2xl overflow-hidden aspect-video">
-              <div className={`absolute inset-0 bg-gradient-to-br ${steps[activeStep].color} opacity-20`} />
-              <div className="absolute inset-0 glass-strong flex items-center justify-center">
-                <div className="text-center p-8">
-                  <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${steps[activeStep].color} flex items-center justify-center mx-auto mb-6`}>
-                    <span className="text-3xl font-bold text-white">{activeStep + 1}</span>
+            <div
+              className="relative rounded-2xl overflow-hidden glass-strong cursor-pointer group"
+              style={{ height: '480px' }}
+              onClick={() => setLightbox(true)}
+              data-track="workflow-image-lightbox"
+            >
+              <div className={`absolute inset-0 bg-gradient-to-br ${steps[activeStep].color} opacity-10`} />
+              <img
+                src={steps[activeStep].image}
+                alt={steps[activeStep].name}
+                className="w-full h-full object-contain p-3 transition-transform duration-500"
+              />
+              <div className="absolute bottom-3 right-3 text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">点击放大</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {lightbox && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-8 cursor-pointer" onClick={() => setLightbox(false)}>
+          <img
+            src={steps[activeStep].image}
+            alt={steps[activeStep].name}
+            className="max-w-full max-h-full object-contain rounded-xl"
+          />
+        </div>
+      )}
+    </section>
+  );
+};
+
+// Production Architecture Section
+const ProductionArchSection = () => {
+  const items = [
+    {
+      title: 'Sandbox 实例池 + 会话隔离',
+      current: '已实现：10 个 Sandbox 实例池（sandbox-0 到 sandbox-9），按 taskId 哈希路由，每个任务创建独立 Session 隔离环境变量和工作目录',
+      production: '进一步优化：结合 Sandbox SDK 的 keepAlive 选项保持长任务容器存活，使用 sleepAfter 配置自动休眠策略，降低闲置成本',
+      icon: '🏗️',
+    },
+    {
+      title: 'Sandbox SDK 原生能力',
+      current: '已实现：exec() 命令执行、readFile/writeFile 文件操作、createSession() 会话管理、WebSocket transport 避免 subrequest 限制',
+      production: 'SDK 已支持：Code Interpreter API（createCodeContext + runCode）执行 Python/JS 并返回图表；watch() 监听文件变更；gitCheckout() 克隆仓库；terminal() 提供浏览器终端',
+      icon: '📦',
+    },
+    {
+      title: '进程管理与服务编排',
+      current: '已实现：主实例 2 次重试后自动 failover 到其他实例，3 秒间隔指数退避，确保单实例故障不影响任务执行',
+      production: 'SDK 已支持：startProcess() + waitForPort()/waitForLog() 管理长运行服务并等待就绪；exposePort() 生成预览 URL 暴露服务；streamProcessLogs() 实时流式监控',
+      icon: '⚡',
+    },
+    {
+      title: '存储与持久化',
+      current: '已实现：截图上传 R2、任务结果写入 Sandbox 文件系统、Session 环境变量传递 API Keys',
+      production: 'SDK 已支持：mountBucket() 将 R2/S3 挂载为本地目录，读写透明持久化；createBackup() 将工作区快照为 squashfs 归档存入 R2，restoreBackup() 通过 FUSE copy-on-write 秒级恢复，支持自定义 TTL 和命名快照',
+      icon: '❄️',
+    },
+  ];
+
+  return (
+    <section className="py-32 px-4 relative">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6">
+            <span className="text-white">Sandbox SDK</span>
+            <span className="gradient-text"> 架构演进</span>
+          </h2>
+          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+            基于 Cloudflare Sandbox SDK 的生产级隔离执行方案
+          </p>
+        </div>
+
+        <div className="space-y-6">
+          {items.map((item, i) => (
+            <div key={i} className="p-8 rounded-2xl glass border border-white/10 hover:border-purple-500/30 transition-all duration-300">
+              <div className="flex items-start gap-6">
+                <div className="text-4xl">{item.icon}</div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-semibold text-white mb-4">{item.title}</h3>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <div className="text-sm text-green-400 mb-2 uppercase tracking-wider">✓ 当前实现</div>
+                      <p className="text-gray-300">{item.current}</p>
+                    </div>
+                    <div>
+                      <div className="text-sm text-purple-400 mb-2 uppercase tracking-wider">→ SDK 能力</div>
+                      <p className="text-gray-400">{item.production}</p>
+                    </div>
                   </div>
-                  <h4 className="text-2xl font-bold text-white mb-4">{steps[activeStep].name}</h4>
-                  <p className="text-gray-300">{steps[activeStep].description}</p>
                 </div>
               </div>
+            </div>
+          ))}
+        </div>
+
+        {/* SDK Feature Reference */}
+        <div className="mt-12 p-6 rounded-xl glass border border-white/10">
+          <h4 className="text-lg font-semibold text-white mb-4">核心 SDK</h4>
+          <div className="grid md:grid-cols-2 gap-6 mb-6">
+            <a href="https://developers.cloudflare.com/agents/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-4 rounded-lg border border-white/10 hover:border-purple-500/40 transition-all group">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shrink-0">
+                <Bot className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <div className="text-white font-semibold group-hover:text-purple-400 transition-colors">Agents SDK</div>
+                <div className="text-gray-400 text-sm">Agent 编排框架 — DO 状态管理、WebSocket 通信、Workflow 编排、Human-in-the-loop</div>
+              </div>
+              <div className="text-gray-500 group-hover:text-purple-400 ml-auto">↗</div>
+            </a>
+            <a href="https://developers.cloudflare.com/sandbox/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-4 rounded-lg border border-white/10 hover:border-purple-500/40 transition-all group">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shrink-0">
+                <Container className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <div className="text-white font-semibold group-hover:text-purple-400 transition-colors">Sandbox SDK</div>
+                <div className="text-gray-400 text-sm">安全执行环境 — 隔离容器、命令执行、文件系统、会话管理、代码解释器</div>
+              </div>
+              <div className="text-gray-500 group-hover:text-purple-400 ml-auto">↗</div>
+            </a>
+          </div>
+          <h5 className="text-sm text-gray-500 uppercase tracking-wider mb-3">Sandbox SDK API 一览</h5>
+          <div className="grid md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <div className="text-purple-400 font-mono mb-1">命令执行</div>
+              <div className="text-gray-400">exec() · execStream() · startProcess()</div>
+            </div>
+            <div>
+              <div className="text-purple-400 font-mono mb-1">文件操作</div>
+              <div className="text-gray-400">readFile() · writeFile() · gitCheckout()</div>
+            </div>
+            <div>
+              <div className="text-purple-400 font-mono mb-1">会话管理</div>
+              <div className="text-gray-400">createSession() · setEnvVars()</div>
+            </div>
+            <div>
+              <div className="text-purple-400 font-mono mb-1">代码解释器</div>
+              <div className="text-gray-400">createCodeContext() · runCode()</div>
+            </div>
+            <div>
+              <div className="text-purple-400 font-mono mb-1">存储挂载</div>
+              <div className="text-gray-400">mountBucket() · createBackup()</div>
+            </div>
+            <div>
+              <div className="text-purple-400 font-mono mb-1">服务暴露</div>
+              <div className="text-gray-400">exposePort() · terminal()</div>
             </div>
           </div>
         </div>
@@ -471,15 +617,16 @@ const CTASection = () => {
           体验
           <span className="gradient-text"> 全栈 Cloudflare</span>
           <br />
-          Agent 的威力
+          Agent 实际效果
         </h2>
         <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto">
           输入一个研究任务，看 Agent 如何在 Cloudflare 上完成规划、搜索与报告生成
         </p>
-        <Link to="/dashboard">
+        <Link to="/dashboard" data-track="cta-start-demo">
           <Button
             size="lg"
             className="bg-purple-600 hover:bg-purple-700 text-white px-10 py-7 text-xl rounded-xl magnetic-btn animate-pulse-glow"
+            data-track="cta-start-demo-button"
           >
             开始 Demo
             <ArrowRight className="ml-2 w-6 h-6" />
@@ -532,7 +679,7 @@ const Navigation = () => {
       }`}
     >
       <div className="max-w-6xl mx-auto px-4 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-3">
+        <Link to="/" className="flex items-center gap-3" data-track="nav-home-logo">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
             <Zap className="w-5 h-5 text-white" />
           </div>
@@ -540,21 +687,22 @@ const Navigation = () => {
         </Link>
 
         <div className="hidden md:flex items-center gap-8">
-          <a href="#architecture" className="text-gray-300 hover:text-white transition-colors">架构</a>
-          <a href="#features" className="text-gray-300 hover:text-white transition-colors">优势</a>
-          <a href="#how-it-works" className="text-gray-300 hover:text-white transition-colors">流程</a>
+          <a href="#architecture" className="text-gray-300 hover:text-white transition-colors" data-track="nav-architecture">架构</a>
+          <a href="#features" className="text-gray-300 hover:text-white transition-colors" data-track="nav-features">优势</a>
+          <a href="#how-it-works" className="text-gray-300 hover:text-white transition-colors" data-track="nav-how-it-works">流程</a>
+          <a href="#production-arch" className="text-gray-300 hover:text-white transition-colors" data-track="nav-production-arch">Sandbox 架构</a>
         </div>
 
         <div className="flex items-center gap-3">
           {loggedIn && (
-            <Link to="/dashboard">
-              <Button className="bg-purple-600 hover:bg-purple-700 text-white">
+            <Link to="/dashboard" data-track="nav-dashboard">
+              <Button className="bg-purple-600 hover:bg-purple-700 text-white" data-track="nav-dashboard-button">
                 进入控制台
               </Button>
             </Link>
           )}
-          <Link to="/login">
-            <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
+          <Link to="/login" data-track="nav-login">
+            <Button variant="outline" className="border-white/20 text-white hover:bg-white/10" data-track="nav-login-button">
               {loggedIn ? '切换账户' : '登录'}
             </Button>
           </Link>
@@ -579,6 +727,9 @@ const Home = () => {
       </section>
       <section id="how-it-works">
         <HowItWorksSection />
+      </section>
+      <section id="production-arch">
+        <ProductionArchSection />
       </section>
       <CTASection />
       <Footer />

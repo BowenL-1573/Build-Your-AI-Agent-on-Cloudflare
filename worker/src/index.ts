@@ -135,9 +135,28 @@ export default {
       if (!user || user.role !== "admin") return json({ error: "admin only" }, 403);
       const { cmd } = await request.json() as { cmd: string };
       const { getSandbox } = await import("@cloudflare/sandbox");
-      const sandbox = await getSandbox(env.Sandbox, "debug");
+      const sandbox = getSandbox((env as any).Sandbox, "debug");
       const r = await sandbox.exec(cmd, { timeout: 30000 });
       return json({ success: r.success, stdout: r.stdout, stderr: r.stderr, exitCode: r.exitCode }, 200);
+    }
+
+    // POST /api/test-stdin — test stdin functionality
+    if (url.pathname === "/api/test-stdin" && request.method === "POST") {
+      const user = authFromRequest(request);
+      if (!user || user.role !== "admin") return json({ error: "admin only" }, 403);
+      const { input } = await request.json() as { input: string };
+      const { getSandbox } = await import("@cloudflare/sandbox");
+      const sandbox = getSandbox((env as any).Sandbox, "debug-stdin");
+      // Test 1: simple cat with stdin
+      const r1 = await sandbox.exec("cat", { stdin: input, timeout: 10000 });
+      // Test 2: python reading stdin
+      const r2 = await sandbox.exec('python3 -c "import sys; print(repr(sys.stdin.read()))"', { stdin: input, timeout: 10000 });
+      return json({
+        test1_cat: { success: r1.success, stdout: r1.stdout, stderr: r1.stderr },
+        test2_python: { success: r2.success, stdout: r2.stdout, stderr: r2.stderr },
+        input_length: input?.length,
+        input_type: typeof input,
+      }, 200);
     }
 
     // GET /api/r2/*
